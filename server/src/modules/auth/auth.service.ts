@@ -23,6 +23,21 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+  isVerified: boolean;
+  createdAt: Date;
+}
+
+export interface AuthResponse extends AuthTokens {
+  user: AuthUser;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -42,7 +57,7 @@ export class AuthService {
 
   // ─── Registration ───────────────────────────────────────────────────────────
 
-  async registerBuyer(dto: RegisterBuyerDto): Promise<AuthTokens> {
+  async registerBuyer(dto: RegisterBuyerDto): Promise<AuthResponse> {
     await this.assertEmailAvailable(dto.email);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
@@ -72,10 +87,23 @@ export class AuthService {
       },
     });
 
-    return this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phoneNumber: user.phoneNumber ?? null,
+        avatarUrl: user.avatarUrl ?? null,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+      },
+    };
   }
 
-  async registerFarmer(dto: RegisterFarmerDto): Promise<AuthTokens> {
+  async registerFarmer(dto: RegisterFarmerDto): Promise<AuthResponse> {
     await this.assertEmailAvailable(dto.email);
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
@@ -86,7 +114,13 @@ export class AuthService {
         name: dto.name,
         phoneNumber: dto.phoneNumber,
         role: Role.FARMER,
-        farmerProfile: { create: {} },
+        farmerProfile: {
+          create: {
+            ...(dto.farmName && { farmName: dto.farmName }),
+            ...(dto.farmLocation && { farmLocation: dto.farmLocation }),
+            ...(dto.farmName && dto.farmLocation && { profileComplete: true }),
+          },
+        },
       },
     });
 
@@ -105,7 +139,20 @@ export class AuthService {
       },
     });
 
-    return this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phoneNumber: user.phoneNumber ?? null,
+        avatarUrl: user.avatarUrl ?? null,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+      },
+    };
   }
 
   async completeFarmerProfile(
@@ -130,7 +177,7 @@ export class AuthService {
 
   // ─── Login ───────────────────────────────────────────────────────────────────
 
-  async login(dto: LoginDto): Promise<AuthTokens> {
+  async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -144,7 +191,20 @@ export class AuthService {
     if (!passwordMatch)
       throw new UnauthorizedException('Invalid email or password');
 
-    return this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phoneNumber: user.phoneNumber,
+        avatarUrl: user.avatarUrl,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+      },
+    };
   }
 
   // ─── Google OAuth ────────────────────────────────────────────────────────────

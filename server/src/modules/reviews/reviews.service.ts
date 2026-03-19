@@ -68,18 +68,16 @@ export class ReviewsService {
   async findByFarmer(farmerId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
 
-    const [reviews, total] = await Promise.all([
-      this.prisma.review.findMany({
-        where: { farmerId },
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          reviewer: { select: { id: true, name: true, avatarUrl: true } },
-        },
-      }),
-      this.prisma.review.count({ where: { farmerId } }),
-    ]);
+    const reviews = await this.prisma.review.findMany({
+      where: { farmerId },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        reviewer: { select: { id: true, name: true, avatarUrl: true } },
+      },
+    });
+    const total = await this.prisma.review.count({ where: { farmerId } });
 
     return {
       data: reviews,

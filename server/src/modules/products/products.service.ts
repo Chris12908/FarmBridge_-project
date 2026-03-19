@@ -76,27 +76,25 @@ export class ProductsService {
 
     const orderBy = this.buildOrderBy(sort);
 
-    const [items, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: {
-          farmer: {
-            select: {
-              id: true,
-              name: true,
-              avatarUrl: true,
-              farmerProfile: {
-                select: { farmName: true, farmLocation: true, rating: true },
-              },
+    const items = await this.prisma.product.findMany({
+      where,
+      orderBy,
+      skip,
+      take: limit,
+      include: {
+        farmer: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+            farmerProfile: {
+              select: { farmName: true, farmLocation: true, rating: true },
             },
           },
         },
-      }),
-      this.prisma.product.count({ where }),
-    ]);
+      },
+    });
+    const total = await this.prisma.product.count({ where });
 
     return {
       items,
