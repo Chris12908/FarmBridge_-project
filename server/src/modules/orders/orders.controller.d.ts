@@ -1,0 +1,311 @@
+import { OrdersService } from './orders.service';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { OrderQueryDto } from './dto/order-query.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { JwtPayload } from '../../common/types/jwt-payload.type';
+export declare class OrdersController {
+    private readonly ordersService;
+    constructor(ordersService: OrdersService);
+    findAll(user: JwtPayload, query: OrderQueryDto): Promise<{
+        data: ({
+            address: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                label: string;
+                street: string;
+                city: string;
+                state: string;
+                country: string;
+                postalCode: string | null;
+                isDefault: boolean;
+                userId: string;
+            } | null;
+            farmer: {
+                id: string;
+                name: string;
+                avatarUrl: string | null;
+            };
+            buyer: {
+                id: string;
+                name: string;
+                avatarUrl: string | null;
+            };
+            session: {
+                product: {
+                    id: string;
+                    name: string;
+                    images: string[];
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                farmerId: string;
+                status: import("@prisma-client").NegotiationStatus;
+                buyerId: string;
+                productId: string;
+                agreedPrice: import("@prisma/client-runtime-utils").Decimal | null;
+                agreedQuantity: number | null;
+                lastMessageAt: Date | null;
+                lastMessagePreview: string | null;
+                buyerUnreadCount: number;
+                farmerUnreadCount: number;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            farmerId: string;
+            pricePerUnit: import("@prisma/client-runtime-utils").Decimal;
+            status: import("@prisma-client").OrderStatus;
+            buyerId: string;
+            orderNumber: string;
+            sessionId: string;
+            addressId: string | null;
+            deliveryAddressSnapshot: import("@prisma/client/runtime/client").JsonValue;
+            quantity: number;
+            subtotal: import("@prisma/client-runtime-utils").Decimal;
+            platformFee: import("@prisma/client-runtime-utils").Decimal;
+            totalAmount: import("@prisma/client-runtime-utils").Decimal;
+            paymentMethod: import("@prisma-client").PaymentMethod;
+            paymentStatus: import("@prisma-client").PaymentStatus;
+            stripePaymentIntentId: string | null;
+            flutterwaveTxRef: string | null;
+            deliveryDate: Date | null;
+            placedAt: Date;
+            confirmedAt: Date | null;
+            dispatchedAt: Date | null;
+            deliveredAt: Date | null;
+            cancelledAt: Date | null;
+        })[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    findOne(id: string, user: JwtPayload): Promise<{
+        address: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            label: string;
+            street: string;
+            city: string;
+            state: string;
+            country: string;
+            postalCode: string | null;
+            isDefault: boolean;
+            userId: string;
+        } | null;
+        farmer: {
+            id: string;
+            email: string;
+            name: string;
+            avatarUrl: string | null;
+        };
+        buyer: {
+            id: string;
+            email: string;
+            name: string;
+            avatarUrl: string | null;
+        };
+        session: {
+            product: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                tags: string[];
+                farmerId: string;
+                description: string | null;
+                category: import("@prisma-client").ProductCategory;
+                pricePerUnit: import("@prisma/client-runtime-utils").Decimal;
+                unit: string;
+                quantityAvailable: number;
+                minimumOrder: number;
+                images: string[];
+                status: import("@prisma-client").ListingStatus;
+                expiresAt: Date | null;
+                viewCount: number;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            farmerId: string;
+            status: import("@prisma-client").NegotiationStatus;
+            buyerId: string;
+            productId: string;
+            agreedPrice: import("@prisma/client-runtime-utils").Decimal | null;
+            agreedQuantity: number | null;
+            lastMessageAt: Date | null;
+            lastMessagePreview: string | null;
+            buyerUnreadCount: number;
+            farmerUnreadCount: number;
+        };
+        review: {
+            id: string;
+            createdAt: Date;
+            rating: number;
+            farmerId: string;
+            orderId: string;
+            reviewerId: string;
+            comment: string | null;
+        } | null;
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        farmerId: string;
+        pricePerUnit: import("@prisma/client-runtime-utils").Decimal;
+        status: import("@prisma-client").OrderStatus;
+        buyerId: string;
+        orderNumber: string;
+        sessionId: string;
+        addressId: string | null;
+        deliveryAddressSnapshot: import("@prisma/client/runtime/client").JsonValue;
+        quantity: number;
+        subtotal: import("@prisma/client-runtime-utils").Decimal;
+        platformFee: import("@prisma/client-runtime-utils").Decimal;
+        totalAmount: import("@prisma/client-runtime-utils").Decimal;
+        paymentMethod: import("@prisma-client").PaymentMethod;
+        paymentStatus: import("@prisma-client").PaymentStatus;
+        stripePaymentIntentId: string | null;
+        flutterwaveTxRef: string | null;
+        deliveryDate: Date | null;
+        placedAt: Date;
+        confirmedAt: Date | null;
+        dispatchedAt: Date | null;
+        deliveredAt: Date | null;
+        cancelledAt: Date | null;
+    }>;
+    create(user: JwtPayload, dto: CreateOrderDto): Promise<{
+        farmer: {
+            id: string;
+            email: string;
+            name: string;
+        };
+        buyer: {
+            id: string;
+            email: string;
+            name: string;
+        };
+        session: {
+            product: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                tags: string[];
+                farmerId: string;
+                description: string | null;
+                category: import("@prisma-client").ProductCategory;
+                pricePerUnit: import("@prisma/client-runtime-utils").Decimal;
+                unit: string;
+                quantityAvailable: number;
+                minimumOrder: number;
+                images: string[];
+                status: import("@prisma-client").ListingStatus;
+                expiresAt: Date | null;
+                viewCount: number;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            farmerId: string;
+            status: import("@prisma-client").NegotiationStatus;
+            buyerId: string;
+            productId: string;
+            agreedPrice: import("@prisma/client-runtime-utils").Decimal | null;
+            agreedQuantity: number | null;
+            lastMessageAt: Date | null;
+            lastMessagePreview: string | null;
+            buyerUnreadCount: number;
+            farmerUnreadCount: number;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        farmerId: string;
+        pricePerUnit: import("@prisma/client-runtime-utils").Decimal;
+        status: import("@prisma-client").OrderStatus;
+        buyerId: string;
+        orderNumber: string;
+        sessionId: string;
+        addressId: string | null;
+        deliveryAddressSnapshot: import("@prisma/client/runtime/client").JsonValue;
+        quantity: number;
+        subtotal: import("@prisma/client-runtime-utils").Decimal;
+        platformFee: import("@prisma/client-runtime-utils").Decimal;
+        totalAmount: import("@prisma/client-runtime-utils").Decimal;
+        paymentMethod: import("@prisma-client").PaymentMethod;
+        paymentStatus: import("@prisma-client").PaymentStatus;
+        stripePaymentIntentId: string | null;
+        flutterwaveTxRef: string | null;
+        deliveryDate: Date | null;
+        placedAt: Date;
+        confirmedAt: Date | null;
+        dispatchedAt: Date | null;
+        deliveredAt: Date | null;
+        cancelledAt: Date | null;
+    }>;
+    updateStatus(id: string, user: JwtPayload, dto: UpdateOrderStatusDto): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        farmerId: string;
+        pricePerUnit: import("@prisma/client-runtime-utils").Decimal;
+        status: import("@prisma-client").OrderStatus;
+        buyerId: string;
+        orderNumber: string;
+        sessionId: string;
+        addressId: string | null;
+        deliveryAddressSnapshot: import("@prisma/client/runtime/client").JsonValue;
+        quantity: number;
+        subtotal: import("@prisma/client-runtime-utils").Decimal;
+        platformFee: import("@prisma/client-runtime-utils").Decimal;
+        totalAmount: import("@prisma/client-runtime-utils").Decimal;
+        paymentMethod: import("@prisma-client").PaymentMethod;
+        paymentStatus: import("@prisma-client").PaymentStatus;
+        stripePaymentIntentId: string | null;
+        flutterwaveTxRef: string | null;
+        deliveryDate: Date | null;
+        placedAt: Date;
+        confirmedAt: Date | null;
+        dispatchedAt: Date | null;
+        deliveredAt: Date | null;
+        cancelledAt: Date | null;
+    }>;
+    cancel(id: string, user: JwtPayload): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        farmerId: string;
+        pricePerUnit: import("@prisma/client-runtime-utils").Decimal;
+        status: import("@prisma-client").OrderStatus;
+        buyerId: string;
+        orderNumber: string;
+        sessionId: string;
+        addressId: string | null;
+        deliveryAddressSnapshot: import("@prisma/client/runtime/client").JsonValue;
+        quantity: number;
+        subtotal: import("@prisma/client-runtime-utils").Decimal;
+        platformFee: import("@prisma/client-runtime-utils").Decimal;
+        totalAmount: import("@prisma/client-runtime-utils").Decimal;
+        paymentMethod: import("@prisma-client").PaymentMethod;
+        paymentStatus: import("@prisma-client").PaymentStatus;
+        stripePaymentIntentId: string | null;
+        flutterwaveTxRef: string | null;
+        deliveryDate: Date | null;
+        placedAt: Date;
+        confirmedAt: Date | null;
+        dispatchedAt: Date | null;
+        deliveredAt: Date | null;
+        cancelledAt: Date | null;
+    }>;
+}
