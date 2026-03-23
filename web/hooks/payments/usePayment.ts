@@ -25,8 +25,8 @@ export function usePayment(orderId?: string) {
   });
 
   const initiateFlutterwave = useMutation({
-    mutationFn: (oid: string) =>
-      paymentService.initiateFlutterwavePayment(oid),
+    mutationFn: ({ oid, phoneNumber }: { oid: string; phoneNumber: string }) =>
+      paymentService.initiateFlutterwavePayment(oid, phoneNumber),
   });
 
   return {

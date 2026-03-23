@@ -1,9 +1,14 @@
 # Dependencies
 node_modules/
 **/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Environment files
 .env
+.env.local
+.env.*.local
 .env.*
 !.env.example
 
@@ -12,19 +17,80 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+lerna-debug.log*
 
 # Build and coverage outputs
 dist/
 build/
 coverage/
 *.tsbuildinfo
+out/
+.next/
+.nuxt/
 
 # OS and editor files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 .vscode/
 .idea/
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.c9/
+*.swp
+*.swo
+*~
 
-# Server generated artifacts
+# IDE cache and settings
+.history/
+.vscode-server/
+.env.*.swp
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Testing
+coverage/
+.nyc_output/
+junit.xml
+
+# Server specific
 server/generated/prisma/
 server/dist/
+server/node_modules/
+server/.env
+server/.env.local
+
+# Web specific
+web/dist/
+web/build/
+web/.next/
+web/out/
+web/node_modules/
+web/.env.local
+web/.env.*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache/
+
+# IDE workspace settings
+.vscode/settings.json
+.vscode/extensions.json
+.idea/
+
+# Dependencies lock files (keep only if mono-repo requires different versions)
+# Uncomment if you want to track:
+# !pnpm-lock.yaml
+# !yarn.lock
