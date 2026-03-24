@@ -128,7 +128,7 @@ export default function EditListingPage() {
         }
       />
 
-      <div className="px-4 py-5 max-w-lg mx-auto space-y-5 pb-32">
+      <div className="px-4 py-5 max-w-lg mx-auto space-y-5 pb-52">
         {/* Current price info */}
         <div className="bg-neutral-sage/50 rounded-xl p-4 flex items-center gap-3">
           <span className="material-symbols-outlined text-primary text-2xl">info</span>
@@ -217,7 +217,7 @@ export default function EditListingPage() {
       </div>
 
       {/* Fixed footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background-light border-t border-primary/10 px-4 py-4">
+      <div className="fixed bottom-16 left-0 right-0 z-60 bg-background-light border-t border-primary/10 px-4 py-4">
         <div className="max-w-lg mx-auto flex gap-3">
           <Button
             variant="outline"

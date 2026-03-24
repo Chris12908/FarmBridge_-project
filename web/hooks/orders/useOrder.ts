@@ -11,6 +11,8 @@ export function useOrder(id: string) {
     queryKey: QUERY_KEYS.ORDERS.detail(id),
     queryFn: () => orderService.getOrder(id),
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Live order status updates

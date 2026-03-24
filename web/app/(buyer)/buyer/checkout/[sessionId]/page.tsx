@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAddresses } from '@/hooks/addresses/useAddresses';
 import { negotiationService } from '@/services/negotiation.service';
@@ -24,11 +24,13 @@ import { toast } from 'sonner';
 
 type Step = 'summary' | 'payment';
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const sessionId = params.sessionId as string;
+  const proposalId = searchParams.get('proposalId') ?? undefined;
 
   const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ['negotiation', sessionId],
@@ -56,7 +58,7 @@ export default function CheckoutPage() {
 
   const createOrderMutation = useMutation({
     mutationFn: () =>
-      orderService.createOrder({ sessionId, addressId: selectedAddressId, paymentMethod }),
+      orderService.createOrder({ sessionId, addressId: selectedAddressId, paymentMethod, proposalId }),
     onSuccess: async (order) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.all });
       setOrderId(order.id);
@@ -133,8 +135,9 @@ export default function CheckoutPage() {
 
   const product = session.product;
   const farmerName = session.farmer?.farmerProfile?.farmName ?? session.farmer?.name ?? 'Farmer';
-  const agreedQuantity = session.agreedQuantity ?? 1;
-  const unitPrice = session.agreedPrice ?? product?.pricePerUnit ?? 0;
+  const acceptedProposal = session.proposals?.find((p) => p.id === proposalId);
+  const agreedQuantity = acceptedProposal?.proposedQuantity ?? session.agreedQuantity ?? 1;
+  const unitPrice = Number(acceptedProposal?.proposedPrice ?? session.agreedPrice ?? product?.pricePerUnit ?? 0);
   const subtotal = unitPrice * agreedQuantity;
   const platformFee = subtotal * 0.05;
   const total = subtotal + platformFee;
@@ -293,5 +296,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense>
+      <CheckoutPageContent />
+    </Suspense>
   );
 }

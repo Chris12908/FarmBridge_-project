@@ -11,6 +11,9 @@ export function useOrders(params?: OrderQueryParams) {
   const { data, isLoading, error } = useQuery({
     queryKey: QUERY_KEYS.ORDERS.list(params as Record<string, unknown>),
     queryFn: () => orderService.listOrders(params),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 30_000,
   });
 
   // Refresh list when any order status changes

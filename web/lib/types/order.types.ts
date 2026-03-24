@@ -21,12 +21,12 @@ export type PaymentMethod = 'STRIPE' | 'FLUTTERWAVE_MPESA' | 'FLUTTERWAVE_MTN' |
 // ─── Address Snapshot ─────────────────────────────────────────────────────────
 
 export interface DeliveryAddressSnapshot {
-  label: string;
-  street: string;
-  city: string;
-  state: string;
-  country: string;
-  postalCode: string;
+  label?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
@@ -55,6 +55,12 @@ export interface Order {
   cancelledAt?: string;
   createdAt: string;
   updatedAt: string;
+  // Relations returned by the API
+  session?: {
+    product?: { id: string; name: string; images: string[] };
+  };
+  buyer?: { id: string; name: string; avatarUrl?: string };
+  farmer?: { id: string; name: string; avatarUrl?: string };
 }
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
@@ -63,6 +69,7 @@ export interface CreateOrderDto {
   sessionId: string;
   addressId: string;
   paymentMethod: PaymentMethod;
+  proposalId?: string;
 }
 
 export interface UpdateOrderStatusDto {

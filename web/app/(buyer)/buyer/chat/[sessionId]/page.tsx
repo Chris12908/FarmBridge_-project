@@ -54,6 +54,14 @@ export default function BuyerChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // When the farmer accepts the buyer's offer, redirect to checkout immediately
+  useEffect(() => {
+    const cleanup = chatService.onDealAccepted(({ sessionId: sid, proposalId }) => {
+      if (sid === sessionId) router.push(`/buyer/checkout/${sessionId}?proposalId=${proposalId}`);
+    });
+    return cleanup;
+  }, [sessionId, router]);
+
   // Respond to proposal mutation
   const respondMutation = useMutation({
     mutationFn: ({
@@ -77,7 +85,7 @@ export default function BuyerChatPage() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['negotiation', sessionId] });
       if (vars.action === 'accept') {
-        router.push(`/buyer/checkout/${sessionId}`);
+        router.push(`/buyer/checkout/${sessionId}?proposalId=${vars.proposalId}`);
       }
       setShowApprovalDialog(false);
     },
@@ -208,12 +216,42 @@ export default function BuyerChatPage() {
                 onAcceptProposal={handleAcceptProposal}
                 onDeclineProposal={handleDeclineProposal}
                 onCounterProposal={handleCounterProposal}
+                onCheckoutProposal={(proposal) =>
+                  router.push(`/buyer/checkout/${sessionId}?proposalId=${proposal.id}`)
+                }
               />
             ))}
           </>
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Deal-agreed checkout banner (visible when offline at time of acceptance) */}
+      {session?.status === NegotiationStatus.BUYER_APPROVED && (
+        <div className="border-t border-primary/10 bg-primary/5 px-4 py-3 flex items-center gap-3">
+          <span className="material-symbols-outlined text-primary text-[20px]">handshake</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-primary">Deal agreed!</p>
+            <p className="text-xs text-text-muted">
+              {formatCurrency(session.agreedPrice ?? 0)} &times;{' '}
+              {session.agreedQuantity} units
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              const latestProposalId = proposals?.find((p) => p.status === 'ACCEPTED')?.id;
+              const url = latestProposalId
+                ? `/buyer/checkout/${sessionId}?proposalId=${latestProposalId}`
+                : `/buyer/checkout/${sessionId}`;
+              router.push(url);
+            }}
+            className="shrink-0"
+          >
+            Checkout →
+          </Button>
+        </div>
+      )}
 
       {/* Voice recorder */}
       {showVoiceRecorder && (

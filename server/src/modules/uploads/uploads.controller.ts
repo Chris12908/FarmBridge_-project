@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Delete,
   HttpCode,
@@ -47,6 +48,7 @@ export class UploadsController {
     @UploadedFile() file: Express.Multer.File,
     @Query('folder') folder: string = 'general',
   ) {
+    if (!file) throw new BadRequestException('No file provided');
     const result = await this.cloudinaryService.uploadImage(file, folder);
     return { url: result.secure_url, publicId: result.public_id };
   }
@@ -67,6 +69,7 @@ export class UploadsController {
     }),
   )
   async uploadVoiceNote(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file provided');
     const result = await this.cloudinaryService.uploadVoiceNote(file);
     return {
       url: result.secure_url,

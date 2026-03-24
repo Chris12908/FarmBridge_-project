@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { useProduct } from '@/hooks/products/useProduct';
 import { useFarmerProducts } from '@/hooks/products/useFarmerProducts';
+import { useStartNegotiation } from '@/hooks/negotiations/useStartNegotiation';
 import { formatCurrency } from '@/lib/utils';
 import { ListingStatus } from '@/lib/types/product.types';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -22,6 +23,7 @@ export default function ProductDetailPage() {
   const { products: moreProducts } = useFarmerProducts(
     product?.farmerId ?? '',
   );
+  const { startNegotiation, isPending: isStartingChat } = useStartNegotiation();
 
   if (isLoading) {
     return (
@@ -44,7 +46,6 @@ export default function ProductDetailPage() {
   const farmerUser = product.farmer;
   const farmer = product.farmer?.farmerProfile;
   const relatedProducts = moreProducts.filter((p) => p.id !== product.id).slice(0, 4);
-  const sessionId = `${product.farmerId}-${productId}`;
 
   return (
     <div>
@@ -113,13 +114,14 @@ export default function ProductDetailPage() {
 
             {/* CTA */}
             <div className="flex gap-3">
-              <Link
-                href={`/buyer/chat/${sessionId}`}
-                className={cn(buttonVariants(), 'flex-1 h-12 text-base font-bold rounded-xl justify-center gap-2')}
+              <Button
+                onClick={() => startNegotiation(productId)}
+                disabled={isStartingChat}
+                className="flex-1 h-12 text-base font-bold rounded-xl gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">chat</span>
-                Negotiate & Chat
-              </Link>
+                {isStartingChat ? 'Starting chat…' : 'Negotiate & Chat'}
+              </Button>
             </div>
           </div>
 

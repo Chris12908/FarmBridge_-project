@@ -40,7 +40,7 @@ export default function NewListingPage() {
   const router = useRouter();
   const { user } = useAuth();
   const farmerId = user?.farmerProfile?.id ?? user?.id ?? '';
-  const { create } = useManageProduct(farmerId);
+  const { create, updateStatus } = useManageProduct(farmerId);
 
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
@@ -51,19 +51,29 @@ export default function NewListingPage() {
   });
 
   function onSubmit(data: FormData, publish: boolean) {
-    create.mutate(
-      {
-        ...data,
-        expiresAt: undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success(publish ? 'Listing published!' : 'Draft saved');
+    create.mutate(data, {
+      onSuccess: (product) => {
+        if (publish) {
+          updateStatus.mutate(
+            { id: product.id, status: ListingStatus.ACTIVE },
+            {
+              onSuccess: () => {
+                toast.success('Listing published!');
+                router.push('/farmer/listings');
+              },
+              onError: () => {
+                toast.error('Saved but failed to publish — check your listings');
+                router.push('/farmer/listings');
+              },
+            }
+          );
+        } else {
+          toast.success('Draft saved');
           router.push('/farmer/listings');
-        },
-        onError: () => toast.error('Failed to save listing'),
-      }
-    );
+        }
+      },
+      onError: () => toast.error('Failed to save listing'),
+    });
   }
 
   return (
@@ -76,7 +86,7 @@ export default function NewListingPage() {
         }
       />
 
-      <div className="px-4 py-5 max-w-lg mx-auto space-y-5 pb-32">
+      <div className="px-4 py-5 max-w-lg mx-auto space-y-5 pb-52">
         {/* Product Info */}
         <div className="bg-white rounded-2xl border border-primary/10 shadow-sm p-5">
           <h2 className="font-bold text-slate-800 mb-4">Product Information</h2>
@@ -166,7 +176,7 @@ export default function NewListingPage() {
       </div>
 
       {/* Fixed footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background-light border-t border-primary/10 px-4 py-4">
+      <div className="fixed bottom-16 left-0 right-0 z-60 bg-background-light border-t border-primary/10 px-4 py-4">
         <div className="max-w-lg mx-auto flex gap-3">
           <Button
             variant="outline"

@@ -6,6 +6,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import helmet from 'helmet';
+import { join } from 'path';
+import { static as serveStatic } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -14,6 +16,17 @@ async function bootstrap() {
 
   // Security headers
   app.use(helmet());
+
+  // Serve locally uploaded files (images, voice-notes)
+  // Accessible at /api/uploads/files/** without going through NestJS routing
+  app.use(
+    '/api/uploads/files',
+    serveStatic(join(process.cwd(), 'uploads'), {
+      setHeaders: (res: { setHeader: (k: string, v: string) => void }) => {
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      },
+    }),
+  );
 
   // CORS
   app.enableCors({

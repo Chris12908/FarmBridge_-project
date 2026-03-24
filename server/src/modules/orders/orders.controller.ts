@@ -51,6 +51,12 @@ export class OrdersController {
     return this.ordersService.updateStatus(id, user.sub, dto);
   }
 
+  @Patch(':id/confirm-delivery')
+  @Roles(Role.BUYER)
+  confirmDelivery(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.ordersService.confirmDelivery(id, user.sub);
+  }
+
   @Delete(':id')
   @Roles(Role.BUYER)
   cancel(@Param('id') id: string, @CurrentUser() user: JwtPayload) {

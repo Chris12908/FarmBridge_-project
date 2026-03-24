@@ -34,6 +34,10 @@ export const SOCKET_EVENTS = {
   MESSAGE_READ: 'chat:message_read',
   ERROR: 'chat:error',
 
+  // Server → Client (inbox refresh)
+  INBOX_UPDATE: 'chat:inbox_update',
+  DEAL_ACCEPTED: 'chat:deal_accepted',
+
   // Server → Client (user room)
   USER_TYPING: 'user:typing',
   NOTIFICATION_NEW: 'notification:new',

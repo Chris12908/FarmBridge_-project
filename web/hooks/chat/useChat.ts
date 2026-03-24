@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/constants';
 import { messageService } from '@/services/message.service';
@@ -8,6 +8,7 @@ import { chatService } from '@/services/chat.service';
 import { useSocket } from '@/providers/SocketProvider';
 import type { ChatMessage, SendMessageDto } from '@/lib/types/negotiation.types';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { toast } from 'sonner';
 
 export function useChat(sessionId: string) {
   const { isConnected } = useSocket();
@@ -17,19 +18,9 @@ export function useChat(sessionId: string) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const hasJoined = useRef(false);
 
-  // Initial message fetch
-  const { isLoading } = useQuery({
-    queryKey: QUERY_KEYS.MESSAGES.list(sessionId),
-    queryFn: () => messageService.getMessages(sessionId),
-    enabled: !!sessionId,
-    select: (data) => data,
-    staleTime: 0,
-  });
-
-  // Separately handle seeding messages state from the query
-  const { data: initialData } = useQuery({
+  // Initial message fetch — single query, derive isLoading from it
+  const { data: initialData, isLoading } = useQuery({
     queryKey: QUERY_KEYS.MESSAGES.list(sessionId),
     queryFn: () => messageService.getMessages(sessionId),
     enabled: !!sessionId,
@@ -44,11 +35,10 @@ export function useChat(sessionId: string) {
     }
   }, [initialData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Join session room on mount
+  // Join session room every time the socket reconnects (idempotent on server)
   useEffect(() => {
-    if (!sessionId || !isConnected || hasJoined.current) return;
+    if (!sessionId || !isConnected) return;
     chatService.joinSession(sessionId);
-    hasJoined.current = true;
   }, [sessionId, isConnected]);
 
   // Socket subscriptions
@@ -72,9 +62,20 @@ export function useChat(sessionId: string) {
       );
     });
 
+    const offProposalUpdated = chatService.onProposalUpdated(({ proposalId, status }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.priceProposal?.id === proposalId
+            ? { ...msg, priceProposal: { ...msg.priceProposal!, status } }
+            : msg
+        )
+      );
+    });
+
     return () => {
       offMessage();
       offTyping();
+      offProposalUpdated();
     };
   }, [sessionId, user?.id]);
 
@@ -89,6 +90,10 @@ export function useChat(sessionId: string) {
   }, [sessionId]);
 
   function sendMessage(dto: Omit<SendMessageDto, 'sessionId'>) {
+    if (!isConnected) {
+      toast.error('No connection — please wait and retry');
+      return;
+    }
     chatService.sendMessage({ ...dto, sessionId });
   }
 

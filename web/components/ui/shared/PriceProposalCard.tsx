@@ -9,6 +9,7 @@ interface PriceProposalCardProps {
   onAccept?: () => void;
   onDecline?: () => void;
   onCounter?: (counterPrice: number, counterQuantity: number, counterNote?: string) => void;
+  onCheckout?: () => void;
 }
 
 export default function PriceProposalCard({
@@ -17,6 +18,7 @@ export default function PriceProposalCard({
   onAccept,
   onDecline,
   onCounter,
+  onCheckout,
 }: PriceProposalCardProps) {
   const [showCounter, setShowCounter] = useState(false);
   const [counterPrice, setCounterPrice] = useState('');
@@ -67,9 +69,20 @@ export default function PriceProposalCard({
         )}
 
         {proposal.status === ProposalStatus.ACCEPTED && (
-          <div className="flex items-center gap-1.5 bg-primary/5 rounded-lg px-3 py-2 text-primary text-xs font-semibold">
-            <span className="material-symbols-outlined fill-1 text-[16px]">check_circle</span>
-            Accepted — Deal Agreed
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 bg-primary/5 rounded-lg px-3 py-2 text-primary text-xs font-semibold">
+              <span className="material-symbols-outlined fill-1 text-[16px]">check_circle</span>
+              Accepted — Deal Agreed
+            </div>
+            {onCheckout && (
+              <button
+                onClick={onCheckout}
+                className="w-full py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">shopping_cart_checkout</span>
+                Proceed to Checkout
+              </button>
+            )}
           </div>
         )}
 

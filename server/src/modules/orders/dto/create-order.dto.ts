@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaymentMethod } from '@prisma-client';
 
 export class CreateOrderDto {
@@ -15,4 +15,8 @@ export class CreateOrderDto {
   @IsDateString()
   @IsOptional()
   deliveryDate?: string;
+
+  @IsString()
+  @IsOptional()
+  proposalId?: string;
 }

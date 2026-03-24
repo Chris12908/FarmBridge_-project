@@ -90,4 +90,18 @@ export const chatService = {
     socket?.on(SOCKET_EVENTS.PROPOSAL_UPDATED, cb);
     return () => socket?.off(SOCKET_EVENTS.PROPOSAL_UPDATED, cb);
   },
+
+  onInboxUpdate(cb: (data: { sessionId: string }) => void): () => void {
+    const socket = getSocket();
+    socket?.on(SOCKET_EVENTS.INBOX_UPDATE, cb);
+    return () => socket?.off(SOCKET_EVENTS.INBOX_UPDATE, cb);
+  },
+
+  onDealAccepted(
+    cb: (data: { sessionId: string; proposalId: string; agreedPrice: number; agreedQuantity: number }) => void
+  ): () => void {
+    const socket = getSocket();
+    socket?.on(SOCKET_EVENTS.DEAL_ACCEPTED, cb);
+    return () => socket?.off(SOCKET_EVENTS.DEAL_ACCEPTED, cb);
+  },
 };

@@ -85,6 +85,7 @@ export interface NegotiationSession {
   buyer?: UserProfile;
   farmer?: UserProfile;
   product?: Product;
+  proposals?: PriceProposal[];
 }
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────

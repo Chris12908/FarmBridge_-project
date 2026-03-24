@@ -10,6 +10,7 @@ interface ChatMessageBubbleProps {
   onAcceptProposal?: (proposal: PriceProposal) => void;
   onDeclineProposal?: (proposal: PriceProposal) => void;
   onCounterProposal?: (proposal: PriceProposal, counterPrice: number, counterQuantity: number, counterNote?: string) => void;
+  onCheckoutProposal?: (proposal: PriceProposal) => void;
 }
 
 export default function ChatMessageBubble({
@@ -18,6 +19,7 @@ export default function ChatMessageBubble({
   onAcceptProposal,
   onDeclineProposal,
   onCounterProposal,
+  onCheckoutProposal,
 }: ChatMessageBubbleProps) {
   const isOwn = message.senderRole === currentUserRole;
 
@@ -41,6 +43,7 @@ export default function ChatMessageBubble({
             onAccept={onAcceptProposal ? () => onAcceptProposal(message.priceProposal!) : undefined}
             onDecline={onDeclineProposal ? () => onDeclineProposal(message.priceProposal!) : undefined}
             onCounter={onCounterProposal ? (price, qty, note) => onCounterProposal(message.priceProposal!, price, qty, note) : undefined}
+            onCheckout={onCheckoutProposal ? () => onCheckoutProposal(message.priceProposal!) : undefined}
           />
           <p className={cn('text-[10px] text-text-muted mt-1', isOwn ? 'text-right' : 'text-left')}>
             {formatRelativeTime(message.createdAt)}

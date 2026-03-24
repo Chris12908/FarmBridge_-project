@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -15,10 +17,15 @@ import {
   ProposalStatus,
   MessageType,
 } from '@prisma-client';
+import { ChatGateway } from '../../gateways/chat.gateway';
 
 @Injectable()
 export class PriceProposalsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => ChatGateway))
+    private chatGateway: ChatGateway,
+  ) {}
 
   async create(
     sessionId: string,
@@ -46,38 +53,58 @@ export class PriceProposalsService {
 
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-    const proposal = await this.prisma.priceProposal.create({
-      data: {
-        sessionId,
-        proposedByUserId,
-        proposedBy,
-        proposedPrice: dto.proposedPrice,
-        proposedQuantity: dto.proposedQuantity,
-        note: dto.note,
-        expiresAt,
-      },
-    });
-
-    // Create linked PRICE_PROPOSAL message
-    await this.prisma.chatMessage.create({
-      data: {
-        sessionId,
-        senderId: proposedByUserId,
-        senderRole: proposedBy,
-        type: MessageType.PRICE_PROPOSAL,
-        priceProposalId: proposal.id,
-        text: `Price proposal: ${dto.proposedPrice} per unit × ${dto.proposedQuantity} units`,
-      },
-    });
-
-    // Update session status
+    // Validate transition before writing anything — keeps proposal + session update atomic
     validateTransition(session.status, NegotiationStatus.PRICE_PROPOSED);
-    await this.prisma.negotiationSession.update({
-      where: { id: sessionId },
-      data: {
-        status: NegotiationStatus.PRICE_PROPOSED,
-        lastMessageAt: new Date(),
-      },
+
+    const { proposal, proposalMessage } = await this.prisma.$transaction(async (tx) => {
+      const newProposal = await tx.priceProposal.create({
+        data: {
+          sessionId,
+          proposedByUserId,
+          proposedBy,
+          proposedPrice: dto.proposedPrice,
+          proposedQuantity: dto.proposedQuantity,
+          note: dto.note,
+          expiresAt,
+        },
+      });
+
+      // Create linked PRICE_PROPOSAL message — include priceProposal so the
+      // chat bubble can render the proposal card without a follow-up fetch
+      const newMessage = await tx.chatMessage.create({
+        data: {
+          sessionId,
+          senderId: proposedByUserId,
+          senderRole: proposedBy,
+          type: MessageType.PRICE_PROPOSAL,
+          priceProposalId: newProposal.id,
+          text: `Price proposal: ${dto.proposedPrice} per unit × ${dto.proposedQuantity} units`,
+        },
+        include: {
+          sender: { select: { id: true, name: true, avatarUrl: true } },
+          priceProposal: true,
+        },
+      });
+
+      await tx.negotiationSession.update({
+        where: { id: sessionId },
+        data: {
+          status: NegotiationStatus.PRICE_PROPOSED,
+          lastMessageAt: new Date(),
+        },
+      });
+
+      return { proposal: newProposal, proposalMessage: newMessage };
+    });
+
+    // Push to session room so both parties see the proposal card immediately
+    this.chatGateway.emitToSession(sessionId, 'chat:message', proposalMessage);
+    // Also notify the other participant's personal room for inbox badge update
+    const otherUserId =
+      proposedBy === Role.BUYER ? session.farmerId : session.buyerId;
+    this.chatGateway.emitToUser(otherUserId, 'chat:inbox_update', {
+      sessionId,
+      message: proposalMessage,
     });
 
     return proposal;
@@ -110,7 +137,7 @@ export class PriceProposalsService {
     if (dto.action === ProposalAction.ACCEPT) {
       validateTransition(session.status, NegotiationStatus.BUYER_APPROVED);
 
-      await this.prisma.$transaction([
+      const [, , systemMessage] = await this.prisma.$transaction([
         this.prisma.priceProposal.update({
           where: { id: proposalId },
           data: { status: ProposalStatus.ACCEPTED },
@@ -133,10 +160,92 @@ export class PriceProposalsService {
           },
         }),
       ]);
+
+      // Both parties see the acceptance system message in real-time
+      this.chatGateway.emitToSession(sessionId, 'chat:message', systemMessage);
+      // Update the proposal card status in both UIs
+      this.chatGateway.emitToSession(sessionId, 'proposal:updated', {
+        proposalId,
+        status: ProposalStatus.ACCEPTED,
+      });
+      // Push deal_accepted to buyer's personal room so they redirect to checkout
+      this.chatGateway.emitToUser(session.buyerId, 'chat:deal_accepted', {
+        sessionId,
+        proposalId,
+        agreedPrice: proposal.proposedPrice,
+        agreedQuantity: proposal.proposedQuantity,
+      });
+    } else if (dto.action === ProposalAction.COUNTER) {
+      if (!dto.counterPrice || !dto.counterQuantity) {
+        throw new BadRequestException(
+          'counterPrice and counterQuantity are required for a counter offer',
+        );
+      }
+      validateTransition(session.status, NegotiationStatus.PRICE_PROPOSED);
+
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // Mark current as COUNTERED, create new proposal, create linked message, update session
+      const counterMessage = await this.prisma.$transaction(async (tx) => {
+        await tx.priceProposal.update({
+          where: { id: proposalId },
+          data: { status: ProposalStatus.COUNTERED },
+        });
+
+        const counterProposal = await tx.priceProposal.create({
+          data: {
+            sessionId,
+            proposedByUserId: userId,
+            proposedBy: userRole,
+            proposedPrice: dto.counterPrice!,
+            proposedQuantity: dto.counterQuantity!,
+            note: dto.counterNote,
+            expiresAt,
+          },
+        });
+
+        const msg = await tx.chatMessage.create({
+          data: {
+            sessionId,
+            senderId: userId,
+            senderRole: userRole,
+            type: MessageType.PRICE_PROPOSAL,
+            priceProposalId: counterProposal.id,
+            text: `Counter offer: ${dto.counterPrice} per unit × ${dto.counterQuantity} units`,
+          },
+          include: {
+            sender: { select: { id: true, name: true, avatarUrl: true } },
+            priceProposal: true,
+          },
+        });
+
+        await tx.negotiationSession.update({
+          where: { id: sessionId },
+          data: {
+            status: NegotiationStatus.PRICE_PROPOSED,
+            lastMessageAt: new Date(),
+          },
+        });
+
+        return msg;
+      });
+
+      this.chatGateway.emitToSession(sessionId, 'chat:message', counterMessage);
+      // Update the original proposal card status in both UIs (PENDING → COUNTERED)
+      this.chatGateway.emitToSession(sessionId, 'proposal:updated', {
+        proposalId,
+        status: ProposalStatus.COUNTERED,
+      });
+      const otherUserId =
+        userRole === Role.BUYER ? session.farmerId : session.buyerId;
+      this.chatGateway.emitToUser(otherUserId, 'chat:inbox_update', {
+        sessionId,
+        message: counterMessage,
+      });
     } else {
       validateTransition(session.status, NegotiationStatus.NEGOTIATING);
 
-      await this.prisma.$transaction([
+      const [, , systemMessage] = await this.prisma.$transaction([
         this.prisma.priceProposal.update({
           where: { id: proposalId },
           data: { status: ProposalStatus.DECLINED },
@@ -155,6 +264,14 @@ export class PriceProposalsService {
           },
         }),
       ]);
+
+      // Both parties see the decline system message in real-time
+      this.chatGateway.emitToSession(sessionId, 'chat:message', systemMessage);
+      // Update the proposal card status in both UIs (PENDING → DECLINED)
+      this.chatGateway.emitToSession(sessionId, 'proposal:updated', {
+        proposalId,
+        status: ProposalStatus.DECLINED,
+      });
     }
 
     return { message: `Proposal ${dto.action}ed` };

@@ -22,5 +22,16 @@ export function useChatInbox() {
     return cleanup;
   }, [queryClient]);
 
+  // When the server pushes an inbox update (new message to another session),
+  // refresh the list so the unread badge updates even when not inside a chat
+  useEffect(() => {
+    const cleanup = chatService.onInboxUpdate(() => {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.NEGOTIATIONS.all,
+      });
+    });
+    return cleanup;
+  }, [queryClient]);
+
   return { sessions: data ?? [], isLoading, error };
 }

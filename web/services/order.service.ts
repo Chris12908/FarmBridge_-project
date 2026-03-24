@@ -38,6 +38,11 @@ export const orderService = {
     return data;
   },
 
+  async confirmDelivery(id: string): Promise<Order> {
+    const { data } = await axiosClient.patch<Order>(`/orders/${id}/confirm-delivery`);
+    return data;
+  },
+
   async cancelOrder(id: string): Promise<void> {
     await axiosClient.delete(`/orders/${id}`);
   },

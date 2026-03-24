@@ -14,31 +14,41 @@ import { OrderTimeline } from '@/components/ui/shared/OrderTimeline';
 import { OrderStatusBadge } from '@/components/ui/shared/NegotiationStatusBadge';
 import { toast } from 'sonner';
 
-export default function FarmerOrderDetailPage() {
+export default function BuyerOrderDetailPage() {
   const params = useParams();
   const orderId = params.orderId as string;
   const queryClient = useQueryClient();
   const { order, isLoading } = useOrder(orderId);
 
-  const updateStatusMutation = useMutation({
-    mutationFn: (status: OrderStatus) => orderService.updateOrderStatus(orderId, status),
+  const confirmDeliveryMutation = useMutation({
+    mutationFn: () => orderService.confirmDelivery(orderId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.detail(orderId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.all });
-      toast.success('Order status updated!');
+      toast.success('Delivery confirmed! Thank you.');
     },
     onError: (err: unknown) => {
-      // Refetch so the UI always reflects the true current state in the DB,
-      // preventing stale-data 400 loops (e.g. order auto-confirmed by payment webhook).
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.detail(orderId) });
-      toast.error((err as { message?: string })?.message ?? 'Failed to update order status');
+      toast.error((err as { message?: string })?.message ?? 'Failed to confirm delivery');
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => orderService.cancelOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.detail(orderId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.all });
+      toast.success('Order cancelled.');
+    },
+    onError: (err: unknown) => {
+      toast.error((err as { message?: string })?.message ?? 'Failed to cancel order');
     },
   });
 
   if (isLoading) {
     return (
       <div>
-        <AppHeader backHref="/farmer/orders" title="Order Details" />
+        <AppHeader backHref="/buyer/orders" title="Order Details" />
         <div className="px-4 py-5 max-w-lg mx-auto animate-pulse space-y-4">
           <div className="h-24 bg-slate-200 rounded-2xl" />
           <div className="h-48 bg-slate-200 rounded-2xl" />
@@ -50,7 +60,7 @@ export default function FarmerOrderDetailPage() {
   if (!order) {
     return (
       <div>
-        <AppHeader backHref="/farmer/orders" title="Order Details" />
+        <AppHeader backHref="/buyer/orders" title="Order Details" />
         <div className="flex flex-col items-center justify-center py-16">
           <p className="text-text-muted">Order not found.</p>
         </div>
@@ -59,11 +69,11 @@ export default function FarmerOrderDetailPage() {
   }
 
   const productName = order.session?.product?.name;
-  const buyerName = order.buyer?.name;
+  const farmerName = order.farmer?.name;
 
   return (
     <div>
-      <AppHeader backHref="/farmer/orders" title="Order Details" />
+      <AppHeader backHref="/buyer/orders" title="Order Details" />
       <div className="px-4 py-5 max-w-lg mx-auto space-y-4">
 
         {/* Order header */}
@@ -72,8 +82,8 @@ export default function FarmerOrderDetailPage() {
             {productName && (
               <p className="text-sm font-bold text-slate-800">{productName}</p>
             )}
-            {buyerName && (
-              <p className="text-xs text-text-muted mt-0.5">Buyer: {buyerName}</p>
+            {farmerName && (
+              <p className="text-xs text-text-muted mt-0.5">From: {farmerName}</p>
             )}
             <p className="text-xs font-mono text-text-muted mt-0.5">{order.orderNumber}</p>
             <p className="text-xs text-text-muted mt-0.5">Placed on {formatDate(order.createdAt)}</p>
@@ -93,8 +103,12 @@ export default function FarmerOrderDetailPage() {
               <span className="text-text-muted">Unit price</span>
               <span className="font-semibold">{formatCurrency(order.pricePerUnit)}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-text-muted">Platform fee (5%)</span>
+              <span className="font-semibold">{formatCurrency(order.platformFee)}</span>
+            </div>
             <div className="flex justify-between border-t border-primary/5 pt-2 font-bold">
-              <span>Total</span>
+              <span>Total paid</span>
               <span className="text-primary text-base">{formatCurrency(order.totalAmount)}</span>
             </div>
           </div>
@@ -102,7 +116,7 @@ export default function FarmerOrderDetailPage() {
 
         {/* Delivery */}
         <div className="bg-white rounded-2xl border border-primary/10 shadow-sm p-5">
-          <h2 className="text-sm font-bold text-slate-800 mb-3">Delivery</h2>
+          <h2 className="text-sm font-bold text-slate-800 mb-3">Delivery Address</h2>
           {order.deliveryAddressSnapshot?.street ? (
             <div className="flex items-start gap-3">
               <span className="material-symbols-outlined text-primary text-[18px] mt-0.5">location_on</span>
@@ -137,43 +151,40 @@ export default function FarmerOrderDetailPage() {
 
         {/* Actions */}
         <div className="flex gap-3">
-          {order.status === OrderStatus.PENDING && (
-            <Button
-              className="flex-1 h-11 rounded-xl font-bold"
-              onClick={() => updateStatusMutation.mutate(OrderStatus.CONFIRMED)}
-              disabled={updateStatusMutation.isPending}
-            >
-              <span className="material-symbols-outlined text-[18px] mr-2">check_circle</span>
-              {updateStatusMutation.isPending ? 'Confirming...' : 'Confirm Order'}
-            </Button>
-          )}
-          {order.status === OrderStatus.CONFIRMED && (
-            <Button
-              className="flex-1 h-11 rounded-xl font-bold"
-              onClick={() => updateStatusMutation.mutate(OrderStatus.DISPATCHED)}
-              disabled={updateStatusMutation.isPending}
-            >
-              <span className="material-symbols-outlined text-[18px] mr-2">local_shipping</span>
-              {updateStatusMutation.isPending ? 'Updating...' : 'Mark as Dispatched'}
-            </Button>
-          )}
           {order.status === OrderStatus.DISPATCHED && (
             <Button
               className="flex-1 h-11 rounded-xl font-bold"
-              onClick={() => updateStatusMutation.mutate(OrderStatus.DELIVERED)}
-              disabled={updateStatusMutation.isPending}
+              onClick={() => confirmDeliveryMutation.mutate()}
+              disabled={confirmDeliveryMutation.isPending}
             >
-              <span className="material-symbols-outlined text-[18px] mr-2">inventory</span>
-              {updateStatusMutation.isPending ? 'Updating...' : 'Mark as Delivered'}
+              <span className="material-symbols-outlined text-[18px] mr-2">check_circle</span>
+              {confirmDeliveryMutation.isPending ? 'Confirming...' : 'Confirm Delivery'}
+            </Button>
+          )}
+          {order.status === OrderStatus.PENDING && (
+            <Button
+              variant="destructive"
+              className="flex-1 h-11 rounded-xl font-bold"
+              onClick={() => cancelMutation.mutate()}
+              disabled={cancelMutation.isPending}
+            >
+              <span className="material-symbols-outlined text-[18px] mr-2">cancel</span>
+              {cancelMutation.isPending ? 'Cancelling...' : 'Cancel Order'}
             </Button>
           )}
           <Link
-            href="/farmer/orders"
+            href="/buyer/orders"
             className={buttonVariants({ variant: 'outline' }) + ' flex-1 h-11 rounded-xl justify-center'}
           >
             Back to Orders
           </Link>
         </div>
+
+        {order.status === OrderStatus.DISPATCHED && (
+          <p className="text-center text-xs text-text-muted px-2">
+            Received your order? Tap &quot;Confirm Delivery&quot; to let the farmer know it arrived.
+          </p>
+        )}
       </div>
     </div>
   );

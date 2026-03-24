@@ -97,7 +97,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!user) return;
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const message = await this.messagesService.create(
+      const { message, session } = await this.messagesService.create(
         data.sessionId,
         user.sub,
         user.role,
@@ -111,7 +111,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         },
       );
 
+      // Broadcast message to everyone in the session room
       this.server.to(`session:${data.sessionId}`).emit('chat:message', message);
+
+      // Notify the other participant's personal room so their inbox refreshes
+      const otherUserId =
+        user.sub === session.buyerId ? session.farmerId : session.buyerId;
+      this.server
+        .to(`user:${otherUserId}`)
+        .emit('chat:inbox_update', { sessionId: data.sessionId, message });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       socket.emit('chat:error', { message });

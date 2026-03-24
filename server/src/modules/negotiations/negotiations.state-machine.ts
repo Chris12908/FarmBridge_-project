@@ -14,9 +14,19 @@ const ALLOWED_TRANSITIONS: Record<NegotiationStatus, NegotiationStatus[]> = {
     NegotiationStatus.NEGOTIATING,
     NegotiationStatus.BUYER_APPROVED,
     NegotiationStatus.BUYER_DECLINED,
+    NegotiationStatus.PRICE_PROPOSED, // counter offer keeps session in same state
   ],
-  [NegotiationStatus.BUYER_APPROVED]: [NegotiationStatus.CHECKED_OUT],
-  [NegotiationStatus.CHECKED_OUT]: [NegotiationStatus.FULFILLED],
+  [NegotiationStatus.BUYER_APPROVED]: [
+    NegotiationStatus.CHECKED_OUT,
+    NegotiationStatus.NEGOTIATING,
+    NegotiationStatus.PRICE_PROPOSED,
+    NegotiationStatus.BUYER_APPROVED, // re-accept/supersede when a pending proposal exists
+  ],
+  [NegotiationStatus.CHECKED_OUT]: [
+    NegotiationStatus.FULFILLED,
+    NegotiationStatus.NEGOTIATING,
+    NegotiationStatus.PRICE_PROPOSED,
+  ],
   [NegotiationStatus.BUYER_DECLINED]: [],
   [NegotiationStatus.FULFILLED]: [],
 };

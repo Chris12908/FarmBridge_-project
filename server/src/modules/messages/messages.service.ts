@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SendMessageDto } from './dto/send-message.dto';
-import { Role, MessageType } from '@prisma-client';
+import { Role, MessageType, NegotiationStatus } from '@prisma-client';
 
 @Injectable()
 export class MessagesService {
@@ -41,10 +41,10 @@ export class MessagesService {
       },
     });
 
-    // Update session preview + unread counter
+    // Update session preview + unread counter, and auto-advance INITIATED → NEGOTIATING
     const preview = this.buildPreview(dto);
     const isToFarmer = senderRole === Role.BUYER;
-    await this.prisma.negotiationSession.update({
+    const updatedSession = await this.prisma.negotiationSession.update({
       where: { id: sessionId },
       data: {
         lastMessageAt: message.createdAt,
@@ -52,10 +52,17 @@ export class MessagesService {
         ...(isToFarmer
           ? { farmerUnreadCount: { increment: 1 } }
           : { buyerUnreadCount: { increment: 1 } }),
+        ...([
+          NegotiationStatus.INITIATED,
+          NegotiationStatus.BUYER_APPROVED,
+          NegotiationStatus.CHECKED_OUT,
+        ].includes(session.status) && {
+          status: NegotiationStatus.NEGOTIATING,
+        }),
       },
     });
 
-    return message;
+    return { message, session: updatedSession };
   }
 
   async markRead(sessionId: string, userId: string, role: Role) {

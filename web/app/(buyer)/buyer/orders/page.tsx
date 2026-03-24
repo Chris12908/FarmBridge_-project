@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useOrders } from '@/hooks/orders/useOrders';
 import { OrderStatus } from '@/lib/types/order.types';
@@ -19,7 +18,7 @@ const STATUS_TABS: { value: OrderStatus | 'all'; label: string }[] = [
 ];
 
 export default function BuyerOrdersPage() {
-  const { orders, isLoading } = useOrders();
+  const { orders, isLoading, error } = useOrders();
 
   return (
     <div className="px-4 py-5 max-w-2xl mx-auto">
@@ -48,6 +47,8 @@ export default function BuyerOrdersPage() {
         <TabsContent value="all">
           {isLoading ? (
             <div className="flex flex-col gap-4"><SkeletonCard variant="order" count={3} /></div>
+          ) : error ? (
+            <EmptyState icon="error" title="Could not load orders" description="Please check your connection and try again." />
           ) : orders.length === 0 ? (
             <EmptyState
               icon="receipt_long"
@@ -70,6 +71,8 @@ export default function BuyerOrdersPage() {
             <TabsContent key={tab.value} value={tab.value}>
               {isLoading ? (
                 <div className="flex flex-col gap-4"><SkeletonCard variant="order" count={3} /></div>
+              ) : error ? (
+                <EmptyState icon="error" title="Could not load orders" description="Please check your connection and try again." />
               ) : filtered.length === 0 ? (
                 <EmptyState icon="receipt_long" title={`No ${tab.label.toLowerCase()} orders`} />
               ) : (
