@@ -43,6 +43,11 @@ export class MessagesService {
 
     // Update session preview + unread counter, and auto-advance INITIATED → NEGOTIATING
     const preview = this.buildPreview(dto);
+    const autoAdvanceStatuses: NegotiationStatus[] = [
+      NegotiationStatus.INITIATED,
+      NegotiationStatus.BUYER_APPROVED,
+      NegotiationStatus.CHECKED_OUT,
+    ];
     const isToFarmer = senderRole === Role.BUYER;
     const updatedSession = await this.prisma.negotiationSession.update({
       where: { id: sessionId },
@@ -52,11 +57,7 @@ export class MessagesService {
         ...(isToFarmer
           ? { farmerUnreadCount: { increment: 1 } }
           : { buyerUnreadCount: { increment: 1 } }),
-        ...([
-          NegotiationStatus.INITIATED,
-          NegotiationStatus.BUYER_APPROVED,
-          NegotiationStatus.CHECKED_OUT,
-        ].includes(session.status) && {
+        ...(autoAdvanceStatuses.includes(session.status) && {
           status: NegotiationStatus.NEGOTIATING,
         }),
       },
