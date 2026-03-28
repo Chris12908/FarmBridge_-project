@@ -6,11 +6,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrder } from '@/hooks/orders/useOrder';
 import { orderService } from '@/services/order.service';
 import { QUERY_KEYS } from '@/lib/constants';
-import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { OrderStatus } from '@/lib/types/order.types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import AppHeader from '@/components/ui/shared/AppHeader';
 import { OrderTimeline } from '@/components/ui/shared/OrderTimeline';
+import { OrderStatusBadge } from '@/components/ui/shared/NegotiationStatusBadge';
 import { toast } from 'sonner';
 
 export default function FarmerOrderDetailPage() {
@@ -23,7 +24,14 @@ export default function FarmerOrderDetailPage() {
     mutationFn: (status: OrderStatus) => orderService.updateOrderStatus(orderId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.detail(orderId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.all });
       toast.success('Order status updated!');
+    },
+    onError: (err: unknown) => {
+      // Refetch so the UI always reflects the true current state in the DB,
+      // preventing stale-data 400 loops (e.g. order auto-confirmed by payment webhook).
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.detail(orderId) });
+      toast.error((err as { message?: string })?.message ?? 'Failed to update order status');
     },
   });
 
@@ -50,20 +58,27 @@ export default function FarmerOrderDetailPage() {
     );
   }
 
+  const productName = order.session?.product?.name;
+  const buyerName = order.buyer?.name;
+
   return (
     <div>
       <AppHeader backHref="/farmer/orders" title="Order Details" />
       <div className="px-4 py-5 max-w-lg mx-auto space-y-4">
 
         {/* Order header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-mono text-text-muted">#{order.orderNumber}</p>
+            {productName && (
+              <p className="text-sm font-bold text-slate-800">{productName}</p>
+            )}
+            {buyerName && (
+              <p className="text-xs text-text-muted mt-0.5">Buyer: {buyerName}</p>
+            )}
+            <p className="text-xs font-mono text-text-muted mt-0.5">{order.orderNumber}</p>
             <p className="text-xs text-text-muted mt-0.5">Placed on {formatDate(order.createdAt)}</p>
           </div>
-          <span className="text-xs font-semibold bg-accent-amber/10 text-accent-amber px-2.5 py-1 rounded-full capitalize">
-            {order.status.toLowerCase()}
-          </span>
+          <OrderStatusBadge status={order.status} />
         </div>
 
         {/* Financials */}
@@ -88,18 +103,24 @@ export default function FarmerOrderDetailPage() {
         {/* Delivery */}
         <div className="bg-white rounded-2xl border border-primary/10 shadow-sm p-5">
           <h2 className="text-sm font-bold text-slate-800 mb-3">Delivery</h2>
-          <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-primary text-[18px] mt-0.5">location_on</span>
-            <div>
-              <p className="font-semibold text-slate-800 text-sm">{order.deliveryAddressSnapshot.label}</p>
-              <p className="text-xs text-text-muted">
-                {order.deliveryAddressSnapshot.street}, {order.deliveryAddressSnapshot.city}
-              </p>
-              <p className="text-xs text-text-muted">
-                {order.deliveryAddressSnapshot.state}, {order.deliveryAddressSnapshot.country}
-              </p>
+          {order.deliveryAddressSnapshot?.street ? (
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-primary text-[18px] mt-0.5">location_on</span>
+              <div>
+                {order.deliveryAddressSnapshot.label && (
+                  <p className="font-semibold text-slate-800 text-sm">{order.deliveryAddressSnapshot.label}</p>
+                )}
+                <p className="text-xs text-text-muted">
+                  {order.deliveryAddressSnapshot.street}, {order.deliveryAddressSnapshot.city}
+                </p>
+                <p className="text-xs text-text-muted">
+                  {order.deliveryAddressSnapshot.state}, {order.deliveryAddressSnapshot.country}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="text-xs text-text-muted">No delivery address provided.</p>
+          )}
         </div>
 
         {/* Timeline */}
@@ -123,7 +144,7 @@ export default function FarmerOrderDetailPage() {
               disabled={updateStatusMutation.isPending}
             >
               <span className="material-symbols-outlined text-[18px] mr-2">check_circle</span>
-              Confirm Order
+              {updateStatusMutation.isPending ? 'Confirming...' : 'Confirm Order'}
             </Button>
           )}
           {order.status === OrderStatus.CONFIRMED && (
@@ -133,7 +154,7 @@ export default function FarmerOrderDetailPage() {
               disabled={updateStatusMutation.isPending}
             >
               <span className="material-symbols-outlined text-[18px] mr-2">local_shipping</span>
-              Mark as Dispatched
+              {updateStatusMutation.isPending ? 'Updating...' : 'Mark as Dispatched'}
             </Button>
           )}
           {order.status === OrderStatus.DISPATCHED && (
@@ -143,7 +164,7 @@ export default function FarmerOrderDetailPage() {
               disabled={updateStatusMutation.isPending}
             >
               <span className="material-symbols-outlined text-[18px] mr-2">inventory</span>
-              Mark as Delivered
+              {updateStatusMutation.isPending ? 'Updating...' : 'Mark as Delivered'}
             </Button>
           )}
           <Link

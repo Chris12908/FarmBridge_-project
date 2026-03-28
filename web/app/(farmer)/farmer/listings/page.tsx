@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { useFarmerProducts } from '@/hooks/products/useFarmerProducts';
 import { useManageProduct } from '@/hooks/products/useManageProduct';
 import { ListingStatus } from '@/lib/types/product.types';
+import { routes } from '@/lib/routes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -15,7 +16,7 @@ import { toast } from 'sonner';
 
 export default function FarmerListingsPage() {
   const { user } = useAuth();
-  const farmerId = user?.farmerProfile?.id ?? user?.id ?? '';
+  const farmerId = user?.id ?? '';
 
   const { products: allProducts, isLoading } = useFarmerProducts(farmerId);
   const { renew, remove } = useManageProduct(farmerId);
@@ -76,7 +77,44 @@ export default function FarmerListingsPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} variant="grid" showFarmerActions />
+                  <div key={product.id} className="flex flex-col gap-2">
+                    <ProductCard product={product} variant="grid" showFarmerActions />
+                    <div className="flex gap-2 px-1">
+                      <Link
+                        href={routes.farmer.editListing(product.id)}
+                        className="flex-1 text-xs font-semibold text-center py-1.5 rounded-lg border border-primary/20 text-primary hover:bg-primary/5 transition-colors"
+                      >
+                        Edit
+                      </Link>
+                      {product.status === ListingStatus.EXPIRED && (
+                        <button
+                          onClick={() =>
+                            renew.mutate(product.id, {
+                              onSuccess: () => toast.success('Listing renewed!'),
+                              onError: () => toast.error('Failed to renew listing'),
+                            })
+                          }
+                          disabled={renew.isPending}
+                          className="flex-1 text-xs font-semibold text-center py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                        >
+                          Renew
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete "${product.name}"? This cannot be undone.`)) {
+                            remove.mutate(product.id, {
+                              onSuccess: () => toast.success('Listing removed'),
+                              onError: () => toast.error('Failed to delete listing'),
+                            });
+                          }
+                        }}
+                        className="flex-1 text-xs font-semibold text-center py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 ))}
                 {value === 'active' && (
                   <Link href="/farmer/listings/new" className="block">

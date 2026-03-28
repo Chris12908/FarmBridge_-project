@@ -16,7 +16,7 @@ const STATUS_TABS: { value: OrderStatus | 'all'; label: string }[] = [
 ];
 
 export default function FarmerOrdersPage() {
-  const { orders, isLoading } = useOrders();
+  const { orders, isLoading, error } = useOrders();
 
   return (
     <div className="px-4 py-5 max-w-2xl lg:max-w-4xl mx-auto">
@@ -42,6 +42,8 @@ export default function FarmerOrdersPage() {
         <TabsContent value="all">
           {isLoading ? (
             <div className="flex flex-col gap-4"><SkeletonCard variant="order" count={4} /></div>
+          ) : error ? (
+            <EmptyState icon="error" title="Could not load orders" description="Please check your connection and try again." />
           ) : orders.length === 0 ? (
             <EmptyState icon="receipt_long" title="No orders yet" description="Orders from buyers will appear here." />
           ) : (
@@ -57,6 +59,8 @@ export default function FarmerOrdersPage() {
             <TabsContent key={tab.value} value={tab.value}>
               {isLoading ? (
                 <div className="flex flex-col gap-4"><SkeletonCard variant="order" count={3} /></div>
+              ) : error ? (
+                <EmptyState icon="error" title="Could not load orders" description="Please check your connection and try again." />
               ) : filtered.length === 0 ? (
                 <EmptyState icon="receipt_long" title={`No ${tab.label.toLowerCase()} orders`} />
               ) : (

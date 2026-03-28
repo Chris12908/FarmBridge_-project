@@ -106,7 +106,7 @@ export default function FarmerSettingsPage() {
 
   const changePassword = useMutation({
     mutationFn: (dto: PasswordForm) =>
-      authService.resetPassword({ token: '', newPassword: dto.newPassword }),
+      authService.changePassword({ currentPassword: dto.currentPassword, newPassword: dto.newPassword }),
     onSuccess: () => {
       toast.success('Password changed');
       passwordForm.reset();
